@@ -1,0 +1,44 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-anon_chat}
+      POSTGRES_USER: ${POSTGRES_USER:-anon}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-anonpass}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-anon} -d ${POSTGRES_DB:-anon_chat}']
+      interval: 5s
+      timeout: 5s
+      retries: 8
+
+  backend:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://anon:anonpass@db:5432/anon_chat?schema=public}
+      BACKEND_PORT: ${BACKEND_PORT:-3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-10}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-10000}
+    command: sh -c "npm run prisma:deploy && npm run dev"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api}
+        VITE_SOCKET_PATH: ${VITE_SOCKET_PATH:-/api/socket.io}
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
