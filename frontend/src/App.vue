@@ -41,6 +41,7 @@ const nounPool = [
   'Fox',
 ]
 
+const message_sound = new Audio('message.mp3')
 const messages = ref<ChatMessage[]>([])
 const messageText = ref('')
 const username = ref('')
@@ -167,6 +168,9 @@ function connectSocket() {
 
   socket.on('messages:new', async (message: ChatMessage) => {
     messages.value.push(message)
+    if (message.username !== username.value) {
+      void message_sound.play()
+    }
     await scrollToBottom()
   })
 }
