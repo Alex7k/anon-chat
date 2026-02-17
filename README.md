@@ -15,7 +15,6 @@ No auth or accounts. One global room.
 
 ```sh
 cp .env.example .env
-# PowerShell: Copy-Item .env.example .env
 ```
 
 1. Start:
