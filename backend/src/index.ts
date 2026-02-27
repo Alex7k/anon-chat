@@ -61,6 +61,10 @@ const io = new SocketIOServer(app.server, {
   },
 })
 
+function broadcastOnlineCount() {
+  io.emit('presence:count', io.engine.clientsCount)
+}
+
 function normalizeMessage(message: {
   id: string
   text: string
@@ -202,8 +206,10 @@ app.post<{ Body: PostMessageBody }>('/messages', async (request, reply) => {
 
 io.on('connection', (socket) => {
   app.log.info({ socketId: socket.id }, 'socket connected')
+  broadcastOnlineCount()
   socket.on('disconnect', () => {
     app.log.info({ socketId: socket.id }, 'socket disconnected')
+    broadcastOnlineCount()
   })
 })
 

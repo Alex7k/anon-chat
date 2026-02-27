@@ -49,11 +49,19 @@ const displayName = ref('')
 const errorMessage = ref('')
 const isSending = ref(false)
 const connectionState = ref<'connecting' | 'connected' | 'disconnected'>('connecting')
+const onlineCount = ref(0)
 const listElement = ref<HTMLElement | null>(null)
 
 let socket: Socket | null = null
 
 const charCount = computed(() => messageText.value.length)
+const statusText = computed(() => {
+  if (connectionState.value === 'connected') {
+    return `${onlineCount.value} online`
+  }
+
+  return connectionState.value
+})
 
 function generateUsername() {
   const adjective = adjectivePool[Math.floor(Math.random() * adjectivePool.length)]
@@ -164,6 +172,13 @@ function connectSocket() {
 
   socket.on('disconnect', () => {
     connectionState.value = 'disconnected'
+    onlineCount.value = 0
+  })
+
+  socket.on('presence:count', (count: unknown) => {
+    if (typeof count === 'number' && Number.isFinite(count) && count >= 0) {
+      onlineCount.value = Math.floor(count)
+    }
   })
 
   socket.on('messages:new', async (message: ChatMessage) => {
@@ -277,7 +292,7 @@ onUnmounted(() => {
           />
         </label>
         <p class="username-tag">@{{ username }}</p>
-        <p class="status" :class="`status-${connectionState}`">{{ connectionState }}</p>
+        <p class="status" :class="`status-${connectionState}`">{{ statusText }}</p>
       </div>
     </header>
 
