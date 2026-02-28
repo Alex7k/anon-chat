@@ -10,36 +10,10 @@ type ChatMessage = {
   createdAt: string
 }
 
-const USERNAME_STORAGE_KEY = 'anon-chat-username'
 const DISPLAY_NAME_STORAGE_KEY = 'anon-chat-display-name'
 const MAX_TEXT_LENGTH = 1000
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
 const SOCKET_PATH = import.meta.env.VITE_SOCKET_PATH ?? '/api/socket.io'
-
-const adjectivePool = [
-  'Silent',
-  'Swift',
-  'Mellow',
-  'Curious',
-  'Bright',
-  'Calm',
-  'Clever',
-  'Gentle',
-  'Brisk',
-  'Kind',
-]
-const nounPool = [
-  'River',
-  'Panda',
-  'Cloud',
-  'Falcon',
-  'Leaf',
-  'Otter',
-  'Comet',
-  'Maple',
-  'Sparrow',
-  'Fox',
-]
 
 const message_sound = new Audio('message.mp3')
 const messages = ref<ChatMessage[]>([])
@@ -63,25 +37,22 @@ const statusText = computed(() => {
   return connectionState.value
 })
 
-function generateUsername() {
-  const adjective = adjectivePool[Math.floor(Math.random() * adjectivePool.length)]
-  const noun = nounPool[Math.floor(Math.random() * nounPool.length)]
-  const suffix = Math.floor(Math.random() * 10000)
-    .toString()
-    .padStart(4, '0')
-  return `${adjective}-${noun}-${suffix}`
-}
-
-function loadIdentity() {
-  const savedUsername = localStorage.getItem(USERNAME_STORAGE_KEY)?.trim()
+async function loadIdentity() {
   const savedDisplayName = localStorage.getItem(DISPLAY_NAME_STORAGE_KEY)?.trim()
-
-  if (savedUsername) {
-    username.value = savedUsername.slice(0, 64)
-  } else {
-    username.value = generateUsername()
-    localStorage.setItem(USERNAME_STORAGE_KEY, username.value)
+  const response = await fetch(`${API_BASE}/identity`, {
+    credentials: 'include',
+  })
+  if (!response.ok) {
+    throw new Error('Could not initialize identity')
   }
+
+  const payload = (await response.json()) as { username: string }
+  const serverUsername = payload.username.trim().slice(0, 64)
+  if (!serverUsername) {
+    throw new Error('Invalid identity response')
+  }
+
+  username.value = serverUsername
 
   displayName.value = (savedDisplayName || username.value).slice(0, 64)
   localStorage.setItem(DISPLAY_NAME_STORAGE_KEY, displayName.value)
@@ -116,7 +87,9 @@ async function scrollToBottom() {
 }
 
 async function loadMessages() {
-  const response = await fetch(`${API_BASE}/messages?limit=200`)
+  const response = await fetch(`${API_BASE}/messages?limit=200`, {
+    credentials: 'include',
+  })
   if (!response.ok) {
     throw new Error('Could not load messages')
   }
@@ -154,6 +127,7 @@ function connectSocket() {
   socket = io(API_BASE === '/api' ? undefined : API_BASE, {
     path: SOCKET_PATH,
     transports: ['websocket', 'polling'],
+    withCredentials: true,
   })
 
   socket.on('connect', async () => {
@@ -209,9 +183,9 @@ async function sendMessage() {
     const response = await fetch(`${API_BASE}/messages`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({
         text: cleanText,
-        username: username.value,
         displayName: displayName.value,
       }),
     })
@@ -262,11 +236,11 @@ function formatTimestamp(timestamp: string) {
 }
 
 onMounted(async () => {
-  loadIdentity()
   try {
+    await loadIdentity()
     await loadMessagesWithRetry()
   } catch {
-    errorMessage.value = 'Could not load message history.'
+    errorMessage.value = 'Could not initialize chat.'
   }
   connectSocket()
 })
@@ -287,7 +261,6 @@ onUnmounted(() => {
             id="displayName"
             v-model="displayName"
             maxlength="64"
-            @blur="saveDisplayName"
             @change="saveDisplayName"
           />
         </label>

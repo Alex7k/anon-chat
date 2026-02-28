@@ -105,6 +105,7 @@ sudo systemctl status cloudflared
 ## API
 
 - `GET /api/health`
+- `GET /api/identity` returns `{ username }` and issues identity cookie when missing
 - `GET /api/messages?limit=200`
-- `POST /api/messages` body `{ text, username, displayName }`
+- `POST /api/messages` body `{ text, displayName }` (`username` is server-issued from signed cookie)
 - Socket event: `messages:new` payload `{ id, text, username, displayName, createdAt }`
