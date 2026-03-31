@@ -9,7 +9,7 @@ Minimal anonymous chat app with:
 - Postgres via Prisma
 - Docker Compose runtime
 
-No auth or accounts. One global room.
+Simple cookie-based identity (no registration)
 
 ## Quickstart
 
