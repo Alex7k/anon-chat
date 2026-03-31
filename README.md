@@ -1,5 +1,7 @@
 # anon-chat
 
+![Screenshot of the webapp](docs/img/screenshot.png)
+
 Minimal anonymous chat app with:
 
 - Vue 3 frontend (built static files served by Nginx)
